@@ -3,6 +3,8 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -11,21 +13,39 @@ const io = new Server(server, {
   pingTimeout: 20000,
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const MAX_CLOUDS = 80;
 const TEXT_LIMIT = 80;
 const CLOUD_TTL = 1000 * 60 * 6;
 const EVAPORATION_TIME = 1000 * 60 * 2;
+const RATE_LIMITS = {
+  'agent:join': { windowMs: 1000, max: 3 },
+  'cloud:create': { windowMs: 10000, max: 3 },
+  'cloud:update': { windowMs: 1000, max: 8 },
+  'cloud:remove': { windowMs: 3000, max: 3 },
+  'scene:reset': { windowMs: 10000, max: 2 },
+};
 
-/** In-memory scene state. For an exhibition install this keeps all screens synced. */
+/** In-memory scene state. No personal data is stored. */
 const agents = new Map();
 const clouds = new Map();
+const rateBuckets = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/participar', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'participar.html')));
 app.get('/exhibition', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'exhibition.html')));
+
+function log(message, details = {}) {
+  const suffix = Object.keys(details).length ? ` ${JSON.stringify(details)}` : '';
+  console.log(`[nuvens] ${message}${suffix}`);
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
 function clamp(value, min, max, fallback) {
   const number = Number(value);
@@ -35,9 +55,11 @@ function clamp(value, min, max, fallback) {
 
 function sanitizeText(text) {
   return String(text || '')
+    .normalize('NFKC')
     .replace(/[<>]/g, '')
     .replace(/javascript:/gi, '')
     .replace(/on\w+=/gi, '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, TEXT_LIMIT);
@@ -53,16 +75,48 @@ function serializeScene() {
 }
 
 function validateCloudPayload(payload = {}) {
+  const source = isPlainObject(payload) ? payload : {};
   return {
-    text: sanitizeText(payload.text),
-    x: clamp(payload.x, 0, 1, 0.5),
-    y: clamp(payload.y, 0, 1, 0.45),
-    scale: clamp(payload.scale, 0.35, 2.8, 1),
-    distance: clamp(payload.distance, 0, 1, 0.45),
-    density: clamp(payload.density, 0.15, 1, 0.55),
-    drift: clamp(payload.drift, -0.35, 0.35, 0.035),
-    opacity: clamp(payload.opacity, 0.12, 0.92, 0.74),
+    text: sanitizeText(source.text),
+    x: clamp(source.x, 0, 1, 0.5),
+    y: clamp(source.y, 0, 1, 0.45),
+    scale: clamp(source.scale, 0.35, 2.8, 1),
+    distance: clamp(source.distance, 0, 1, 0.45),
+    density: clamp(source.density, 0.15, 1, 0.55),
+    drift: clamp(source.drift, -0.35, 0.35, 0.035),
+    opacity: clamp(source.opacity, 0.12, 0.92, 0.74),
   };
+}
+
+function checkRateLimit(socket, eventName) {
+  const limit = RATE_LIMITS[eventName];
+  if (!limit) return { ok: true };
+  const now = Date.now();
+  const key = `${socket.id}:${eventName}`;
+  const bucket = rateBuckets.get(key) || { count: 0, resetAt: now + limit.windowMs };
+  if (now > bucket.resetAt) {
+    bucket.count = 0;
+    bucket.resetAt = now + limit.windowMs;
+  }
+  bucket.count += 1;
+  rateBuckets.set(key, bucket);
+  if (bucket.count <= limit.max) return { ok: true };
+  log('evento bloqueado por limite de frequência', { event: eventName, socketId: socket.id });
+  return { ok: false, error: 'Aguarde alguns segundos antes de enviar novamente.' };
+}
+
+function withGuard(socket, eventName, acknowledge, handler) {
+  const rate = checkRateLimit(socket, eventName);
+  if (!rate.ok) {
+    if (typeof acknowledge === 'function') acknowledge(rate);
+    return;
+  }
+  try {
+    handler();
+  } catch (error) {
+    log('erro de conexão', { event: eventName, socketId: socket.id, message: error.message });
+    if (typeof acknowledge === 'function') acknowledge({ ok: false, error: 'Erro temporário no servidor.' });
+  }
 }
 
 function removeCloud(id, reason = 'removed') {
@@ -89,13 +143,14 @@ function removeAgentCloud(agentId, reason = 'agent:disconnect') {
 io.on('connection', (socket) => {
   socket.emit('scene:state', serializeScene());
 
-  socket.on('agent:join', (_payload, acknowledge) => {
+  socket.on('agent:join', (_payload, acknowledge) => withGuard(socket, 'agent:join', acknowledge, () => {
     agents.set(socket.id, { id: socket.id, joinedAt: Date.now() });
+    log('visitante conectado', { socketId: socket.id, visitors: agents.size });
     socket.emit('scene:state', serializeScene());
-    if (typeof acknowledge === 'function') acknowledge({ agentId: socket.id });
-  });
+    if (typeof acknowledge === 'function') acknowledge({ ok: true, agentId: socket.id });
+  }));
 
-  socket.on('cloud:create', (payload, acknowledge) => {
+  socket.on('cloud:create', (payload, acknowledge) => withGuard(socket, 'cloud:create', acknowledge, () => {
     agents.set(socket.id, agents.get(socket.id) || { id: socket.id, joinedAt: Date.now() });
     const data = validateCloudPayload(payload);
     if (!data.text) {
@@ -105,54 +160,49 @@ io.on('connection', (socket) => {
 
     removeAgentCloud(socket.id, 'replaced');
     const now = Date.now();
-    const cloud = {
-      id: `${socket.id}-${now}`,
-      agentId: socket.id,
-      text: data.text,
-      x: data.x,
-      y: data.y,
-      scale: data.scale,
-      distance: data.distance,
-      density: data.density,
-      drift: data.drift,
-      opacity: data.opacity,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const cloud = { id: `${socket.id}-${now}`, agentId: socket.id, ...data, createdAt: now, updatedAt: now };
     clouds.set(cloud.id, cloud);
     enforceCloudLimit();
     io.emit('cloud:create', cloud);
+    log('nuvem criada', { cloudId: cloud.id, clouds: clouds.size });
     if (typeof acknowledge === 'function') acknowledge({ ok: true, cloud, agentId: socket.id });
-  });
+  }));
 
-  socket.on('cloud:update', (payload, acknowledge) => {
+  socket.on('cloud:update', (payload, acknowledge) => withGuard(socket, 'cloud:update', acknowledge, () => {
     const cloud = [...clouds.values()].find((item) => item.agentId === socket.id);
     if (!cloud) {
       if (typeof acknowledge === 'function') acknowledge({ ok: false, error: 'Nenhuma nuvem ativa para este visitante.' });
       return;
     }
-    const data = validateCloudPayload({ ...cloud, ...payload });
+    const data = validateCloudPayload({ ...cloud, ...(isPlainObject(payload) ? payload : {}) });
     Object.assign(cloud, data, { text: cloud.text, updatedAt: Date.now() });
     clouds.set(cloud.id, cloud);
     io.emit('cloud:update', cloud);
     if (typeof acknowledge === 'function') acknowledge({ ok: true, cloud });
-  });
+  }));
 
-  socket.on('cloud:remove', (_payload, acknowledge) => {
+  socket.on('cloud:remove', (_payload, acknowledge) => withGuard(socket, 'cloud:remove', acknowledge, () => {
     removeAgentCloud(socket.id, 'visitor');
     if (typeof acknowledge === 'function') acknowledge({ ok: true });
-  });
+  }));
 
-  socket.on('scene:reset', (_payload, acknowledge) => {
+  socket.on('scene:reset', (_payload, acknowledge) => withGuard(socket, 'scene:reset', acknowledge, () => {
     clouds.clear();
+    log('reset de cena', { socketId: socket.id });
     io.emit('scene:reset', { at: Date.now() });
     if (typeof acknowledge === 'function') acknowledge({ ok: true });
-  });
+  }));
 
-  socket.on('disconnect', () => {
+  socket.on('error', (error) => log('erro de conexão', { socketId: socket.id, message: error.message }));
+
+  socket.on('disconnect', (reason) => {
     agents.delete(socket.id);
     removeAgentCloud(socket.id, 'agent:disconnect');
+    rateBuckets.forEach((_value, key) => {
+      if (key.startsWith(`${socket.id}:`)) rateBuckets.delete(key);
+    });
     io.emit('agent:disconnect', { agentId: socket.id });
+    log('erro de conexão', { socketId: socket.id, reason });
   });
 });
 
@@ -173,5 +223,5 @@ setInterval(() => {
 }, 5000);
 
 server.listen(PORT, () => {
-  console.log(`Nuvens Holandesas ouvindo em http://localhost:${PORT}`);
+  log('servidor iniciado', { port: PORT, nodeEnv: process.env.NODE_ENV });
 });

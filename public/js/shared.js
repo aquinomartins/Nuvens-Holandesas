@@ -8,7 +8,14 @@
     .trim()
     .slice(0, 80);
 
-  const createSocket = () => io({ reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 600 });
+  const createSocket = () => io({
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 600,
+    reconnectionDelayMax: 4000,
+    timeout: 10000,
+    transports: ['websocket', 'polling'],
+  });
 
   window.Nuvens = { clamp, sanitizeText, createSocket };
 }());

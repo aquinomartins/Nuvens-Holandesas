@@ -2,6 +2,7 @@ const canvas = document.querySelector('#scene');
 const ctx = canvas.getContext('2d');
 const socket = window.Nuvens.createSocket();
 const clouds = new Map();
+const connectionStatus = document.querySelector('#connectionStatus');
 const contemplativeTexts = ['luz suspensa', 'vento baixo', 'campo aberto', 'céu antigo', 'sombra úmida'];
 const CLOUD_TTL = 1000 * 60 * 6;
 const EVAPORATION_TIME = 1000 * 60 * 2;
@@ -50,7 +51,31 @@ function withAtmosphere(cloud) {
   };
 }
 
-socket.on('connect', () => socket.emit('agent:join'));
+function setConnectionError(message) {
+  if (!connectionStatus) return;
+  connectionStatus.textContent = message;
+  connectionStatus.hidden = !message;
+}
+
+function rebuildScene() {
+  socket.emit('agent:join', {}, (response) => {
+    if (!response?.ok) setConnectionError(response?.error || 'Conexão instável. Tentando reconstruir a cena…');
+  });
+}
+
+socket.on('connect', () => {
+  setConnectionError('');
+  rebuildScene();
+});
+socket.io.on('reconnect', () => {
+  setConnectionError('');
+  rebuildScene();
+});
+socket.io.on('reconnect_attempt', () => setConnectionError('Reconectando à cena…'));
+socket.io.on('reconnect_error', () => setConnectionError('Conexão instável. A cena será restaurada automaticamente.'));
+socket.io.on('reconnect_failed', () => setConnectionError('Sem conexão com o servidor. Verifique a rede local.'));
+socket.on('disconnect', () => setConnectionError('Reconectando à cena…'));
+socket.on('connect_error', () => setConnectionError('Conexão instável. Tentando novamente…'));
 socket.on('scene:state', (state) => {
   clouds.clear();
   (state.clouds || []).forEach((cloud) => clouds.set(cloud.id, withAtmosphere(cloud)));
