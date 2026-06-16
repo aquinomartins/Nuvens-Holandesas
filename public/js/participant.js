@@ -3,7 +3,7 @@ const text = document.querySelector('#cloudText');
 const counter = document.querySelector('#counter');
 const statusEl = document.querySelector('#status');
 const createButton = document.querySelector('#createCloud');
-const controls = ['x', 'y', 'scale', 'distance', 'density', 'drift'].reduce((acc, id) => {
+const controls = ['x', 'y', 'scale', 'distance', 'density', 'drift', 'luminosity', 'shadowMass'].reduce((acc, id) => {
   acc[id] = document.querySelector(`#${id}`);
   return acc;
 }, {});
@@ -18,6 +18,8 @@ function payloadFromControls() {
     distance: controls.distance.value,
     density: controls.density.value,
     drift: controls.drift.value,
+    luminosity: controls.luminosity.value,
+    shadowMass: controls.shadowMass.value,
   };
 }
 
@@ -30,7 +32,10 @@ socket.on('connect', () => {
   socket.emit('agent:join');
 });
 socket.on('disconnect', () => setStatus('reconectando…'));
-socket.io.on('reconnect', () => socket.emit('agent:join'));
+socket.io.on('reconnect', () => {
+  socket.emit('agent:join');
+  socket.emit('scene:request-state');
+});
 socket.on('connect_error', () => setStatus('reconectando…'));
 
 text.addEventListener('input', () => {

@@ -1,17 +1,26 @@
 # Nuvens Holandesas — Arquiteturas Atmosféricas Distribuídas
 
-Aplicação web interativa para exposição presencial. Visitantes acessam `/participar` pelo celular, escrevem uma frase curta e controlam uma nuvem textual coletiva exibida em tempo real em `/exhibition`.
+Aplicação web interativa para exposição presencial. Visitantes acessam `/participar` pelo celular, escrevem uma frase curta e condensam uma assinatura atmosférica coletiva exibida em tempo real em `/exhibition`. A frase vira clima: densidade, deriva, luz, sombra, crescimento vertical e duração da nuvem.
 
 ## Estrutura
 
-- `server.js` — servidor Node.js com Express e Socket.IO, validação de dados, limite de nuvens e evaporação gradual.
+- `server.js` — servidor Node.js com Express e Socket.IO, validação de dados, transformação determinística de texto em atmosfera, limite de nuvens e evaporação gradual.
 - `public/index.html` — página inicial.
 - `public/participar.html` — interface mobile dos visitantes.
 - `public/exhibition.html` — canvas fullscreen da exposição.
 - `public/css/style.css` — identidade visual sóbria e responsiva.
 - `public/js/shared.js` — utilitários compartilhados e conexão Socket.IO com reconexão.
 - `public/js/participant.js` — criação e atualização da nuvem do visitante.
-- `public/js/exhibition.js` — paisagem generativa, nuvens tipográficas e sombras.
+- `public/js/exhibition.js` — pintura atmosférica generativa em Canvas: céu dominante, Planalto Central baixo, nuvens volumétricas, sombras projetadas, veladuras e textura pictórica.
+
+
+## Direção estética da exposição
+
+A rota `/exhibition` foi refatorada para operar como uma pintura atmosférica viva, não como uma interface. A composição privilegia céu dominante (cerca de 70% a 80% da tela), horizonte baixo, chapadas distantes, cerrado discreto, caminhos ocres e pequenas arquiteturas brancas quase fantasmáticas. As nuvens são tratadas como arquiteturas da paisagem: massas sobrepostas, luz superior/lateral, sombra interna, filamentos evaporados, véus atmosféricos e sombras suaves projetadas no solo.
+
+A visualidade sintetiza, sem copiar literalmente, três referências: a construção luminosa e meteorológica da paisagem holandesa do século XVII; a paisagem brasileira lírica e suspensa associada a Guignard; e a vastidão seca do Planalto Central. A paleta evita saturação e usa azul acinzentado, branco quente, cinza pérola, ocre, verde seco, sépia e sombras azuladas/esverdeadas.
+
+A frase do visitante não é usada como legenda principal. Ela é sanitizada, limitada a 80 caracteres e transformada em uma semente determinística que altera densidade, suavidade, luminosidade, deriva, temperatura, sombra, crescimento vertical e vida útil. Textos longos tendem a condensar mais massa; textos com mais vogais tendem a dissolver melhor as bordas.
 
 ## Rodar localmente
 
@@ -57,10 +66,11 @@ A aplicação implementa os eventos solicitados:
 - `cloud:update`
 - `cloud:remove`
 - `scene:state`
+- `scene:request-state`
 - `scene:reset`
 - `agent:disconnect`
 
-Cada visitante controla somente uma nuvem por vez. O servidor limita a cena a 80 nuvens simultâneas, remove excesso pelas mais antigas e evapora nuvens após alguns minutos.
+Cada visitante controla somente uma nuvem por vez. O servidor limita a cena a 80 nuvens simultâneas, remove excesso pelas mais antigas e evapora nuvens de visitantes entre 4 e 10 minutos, com fade gradual.
 
 ## Operação contínua em exposição
 
