@@ -61,3 +61,35 @@ A aplicação implementa os eventos solicitados:
 - `agent:disconnect`
 
 Cada visitante controla somente uma nuvem por vez. O servidor limita a cena a 80 nuvens simultâneas, remove excesso pelas mais antigas e evapora nuvens após alguns minutos.
+
+## Operação contínua em exposição
+
+A aplicação foi preparada para rodar sem login e sem armazenamento de dados pessoais: o servidor mantém apenas estado efêmero em memória para sincronizar a cena e remove as nuvens automaticamente após alguns minutos.
+
+Recursos de estabilidade:
+
+- Reconexão automática do Socket.IO no cliente, com reconstrução da cena em `/exhibition` após reconectar.
+- Validação e sanitização de textos e parâmetros no servidor antes de retransmitir eventos.
+- Limite de frequência por visitante para reduzir spam de eventos.
+- Limite máximo de 80 nuvens simultâneas, descartando as mais antigas quando necessário.
+- Evaporação e remoção automática de nuvens antigas.
+- Fallback visual contemplativo quando não houver visitantes conectados.
+- Mensagem discreta de status em `/exhibition` exibida apenas durante erro ou instabilidade de conexão.
+- Endpoint `/health` retornando `{ "status": "ok" }` para monitoramento.
+- Logs do servidor para início, visitantes conectados, nuvens criadas, erros/desconexões e reset da cena.
+
+## Variáveis de ambiente
+
+- `PORT`: porta fornecida pelo Railway. Localmente, se não for definida, o app usa `3000`.
+- `NODE_ENV`: ambiente de execução. Se não for definida, o servidor usa `production` como padrão.
+
+## Checklist rápido para Railway
+
+1. Conecte o repositório ao Railway.
+2. Use Node.js 18 ou superior.
+3. Mantenha o comando de instalação padrão do Railway ou rode `npm install`.
+4. Configure o comando de start como `npm start`.
+5. Não fixe a porta manualmente: o servidor lê `process.env.PORT` automaticamente.
+6. Opcionalmente defina `NODE_ENV=production` nas variáveis do serviço.
+7. Após o deploy, verifique `https://sua-url.railway.app/health`.
+8. Use `https://sua-url.railway.app/participar` no QR Code dos visitantes e `https://sua-url.railway.app/exhibition` na tela principal.

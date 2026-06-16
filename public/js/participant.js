@@ -30,7 +30,8 @@ socket.on('connect', () => {
   socket.emit('agent:join');
 });
 socket.on('disconnect', () => setStatus('reconectando…'));
-socket.on('reconnect', () => socket.emit('agent:join'));
+socket.io.on('reconnect', () => socket.emit('agent:join'));
+socket.on('connect_error', () => setStatus('reconectando…'));
 
 text.addEventListener('input', () => {
   text.value = window.Nuvens.sanitizeText(text.value);

@@ -43,3 +43,19 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .home-actions, .button { width: 100%; text-align: center; justify-content: center; }
   .panel { border-radius: 20px; }
 }
+.connection-status {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  max-width: min(22rem, calc(100vw - 2.4rem));
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(50, 54, 48, 0.16);
+  border-radius: 999px;
+  background: rgba(250, 247, 238, 0.62);
+  color: rgba(31, 35, 30, 0.58);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+.connection-status[hidden] { display: none; }
