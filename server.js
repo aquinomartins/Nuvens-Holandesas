@@ -16,6 +16,8 @@ const io = new Server(server, {
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_CLOUDS = 80;
 const TEXT_LIMIT = 80;
+const CLOUD_TTL_MIN = 1000 * 60 * 4;
+const CLOUD_TTL_MAX = 1000 * 60 * 10;
 const CLOUD_TTL = 1000 * 60 * 6;
 const EVAPORATION_TIME = 1000 * 60 * 2;
 const RATE_LIMITS = {
@@ -65,6 +67,45 @@ function sanitizeText(text) {
     .slice(0, TEXT_LIMIT);
 }
 
+function hashString(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededUnit(seed, salt = 0) {
+  let state = (seed + Math.imul(salt + 1, 0x9e3779b9)) >>> 0;
+  state = Math.imul(state ^ (state >>> 16), 2246822507);
+  state = Math.imul(state ^ (state >>> 13), 3266489909);
+  return ((state ^ (state >>> 16)) >>> 0) / 4294967295;
+}
+
+function textToAtmosphericSeed(text) {
+  const sanitized = sanitizeText(text);
+  const base = sanitized || 'silencio atmosferico';
+  const textSeed = hashString(base);
+  const letters = [...base.toLowerCase()].filter((char) => /[a-záàâãéêíóôõúüç]/i.test(char));
+  const vowels = letters.filter((char) => 'aeiouáàâãéêíóôõúü'.includes(char)).length;
+  const vowelRatio = letters.length ? vowels / letters.length : 0.42;
+  const lengthRatio = Math.min(1, sanitized.length / TEXT_LIMIT);
+  return {
+    text: sanitized,
+    textSeed,
+    seed: textSeed,
+    density: clamp(0.28 + lengthRatio * 0.46 + seededUnit(textSeed, 1) * 0.2, 0.15, 1, 0.55),
+    verticalGrowth: clamp(0.38 + seededUnit(textSeed, 2) * 0.5 + lengthRatio * 0.24, 0.2, 1.25, 0.64),
+    softness: clamp(0.36 + vowelRatio * 0.44 + seededUnit(textSeed, 3) * 0.18, 0.25, 1, 0.66),
+    luminosity: clamp(0.38 + seededUnit(textSeed, 4) * 0.48 + (1 - lengthRatio) * 0.08, 0.2, 1, 0.58),
+    drift: clamp((seededUnit(textSeed, 5) - 0.5) * 0.16, -0.35, 0.35, 0.035),
+    temperature: clamp((seededUnit(textSeed, 6) - 0.5) * 2, -1, 1, 0),
+    shadowMass: clamp(0.22 + lengthRatio * 0.42 + seededUnit(textSeed, 7) * 0.26, 0.1, 1, 0.46),
+    life: Math.round(CLOUD_TTL_MIN + seededUnit(textSeed, 8) * (CLOUD_TTL_MAX - CLOUD_TTL_MIN)),
+  };
+}
+
 function serializeScene() {
   return {
     clouds: [...clouds.values()],
@@ -84,6 +125,8 @@ function validateCloudPayload(payload = {}) {
     distance: clamp(source.distance, 0, 1, 0.45),
     density: clamp(source.density, 0.15, 1, 0.55),
     drift: clamp(source.drift, -0.35, 0.35, 0.035),
+    luminosity: clamp(source.luminosity, 0.2, 1, 0.58),
+    shadowMass: clamp(source.shadowMass, 0.1, 1, 0.46),
     opacity: clamp(source.opacity, 0.12, 0.92, 0.74),
   };
 }
@@ -160,7 +203,19 @@ io.on('connection', (socket) => {
 
     removeAgentCloud(socket.id, 'replaced');
     const now = Date.now();
-    const cloud = { id: `${socket.id}-${now}`, agentId: socket.id, ...data, createdAt: now, updatedAt: now };
+    const atmosphere = textToAtmosphericSeed(data.text);
+    const cloud = {
+      id: `${socket.id}-${now}`,
+      agentId: socket.id,
+      ...data,
+      ...atmosphere,
+      drift: clamp(payload?.drift, -0.35, 0.35, atmosphere.drift),
+      luminosity: clamp(payload?.luminosity, 0.2, 1, atmosphere.luminosity),
+      shadowMass: clamp(payload?.shadowMass, 0.1, 1, atmosphere.shadowMass),
+      ambient: false,
+      createdAt: now,
+      updatedAt: now,
+    };
     clouds.set(cloud.id, cloud);
     enforceCloudLimit();
     io.emit('cloud:create', cloud);
@@ -175,7 +230,18 @@ io.on('connection', (socket) => {
       return;
     }
     const data = validateCloudPayload({ ...cloud, ...(isPlainObject(payload) ? payload : {}) });
-    Object.assign(cloud, data, { text: cloud.text, updatedAt: Date.now() });
+    Object.assign(cloud, {
+      x: data.x,
+      y: data.y,
+      scale: data.scale,
+      distance: data.distance,
+      density: data.density,
+      drift: data.drift,
+      luminosity: data.luminosity,
+      shadowMass: data.shadowMass,
+      opacity: data.opacity,
+      updatedAt: Date.now(),
+    });
     clouds.set(cloud.id, cloud);
     io.emit('cloud:update', cloud);
     if (typeof acknowledge === 'function') acknowledge({ ok: true, cloud });
@@ -183,6 +249,11 @@ io.on('connection', (socket) => {
 
   socket.on('cloud:remove', (_payload, acknowledge) => withGuard(socket, 'cloud:remove', acknowledge, () => {
     removeAgentCloud(socket.id, 'visitor');
+    if (typeof acknowledge === 'function') acknowledge({ ok: true });
+  }));
+
+  socket.on('scene:request-state', (_payload, acknowledge) => withGuard(socket, 'scene:request-state', acknowledge, () => {
+    socket.emit('scene:state', serializeScene());
     if (typeof acknowledge === 'function') acknowledge({ ok: true });
   }));
 
@@ -211,10 +282,11 @@ setInterval(() => {
   const now = Date.now();
   for (const cloud of clouds.values()) {
     const age = now - cloud.createdAt;
-    if (age > CLOUD_TTL + EVAPORATION_TIME) {
+    const ttl = clamp(cloud.life, CLOUD_TTL_MIN, CLOUD_TTL_MAX, CLOUD_TTL);
+    if (age > ttl + EVAPORATION_TIME) {
       removeCloud(cloud.id, 'evaporated');
-    } else if (age > CLOUD_TTL) {
-      const fade = 1 - (age - CLOUD_TTL) / EVAPORATION_TIME;
+    } else if (age > ttl) {
+      const fade = 1 - (age - ttl) / EVAPORATION_TIME;
       cloud.opacity = Math.max(0, Math.min(cloud.opacity, fade * 0.65));
       cloud.updatedAt = now;
       io.emit('cloud:update', cloud);
