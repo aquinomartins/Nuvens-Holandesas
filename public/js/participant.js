@@ -3,7 +3,7 @@ const text = document.querySelector('#cloudText');
 const counter = document.querySelector('#counter');
 const statusEl = document.querySelector('#status');
 const createButton = document.querySelector('#createCloud');
-const controls = ['x', 'y', 'scale', 'distance', 'density', 'drift', 'luminosity', 'shadowMass'].reduce((acc, id) => {
+const controls = ['x', 'y', 'scale', 'distance', 'density', 'drift', 'luminosity', 'shadowMass', 'outlineStrength'].reduce((acc, id) => {
   acc[id] = document.querySelector(`#${id}`);
   return acc;
 }, {});
@@ -20,6 +20,7 @@ function payloadFromControls() {
     drift: controls.drift.value,
     luminosity: controls.luminosity.value,
     shadowMass: controls.shadowMass.value,
+    outlineStrength: controls.outlineStrength.value,
   };
 }
 
