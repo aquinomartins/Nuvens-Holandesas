@@ -10,27 +10,23 @@
     <main class="participant-shell">
       <header>
         <p class="eyebrow">Visitante</p>
-        <h1>Escreva uma nuvem</h1>
-        <p>sua frase vira clima, borda e pincelada.</p>
+        <h1>Escolha um objeto</h1>
+        <p>escolha um objeto e insira-o na composição coletiva.</p>
       </header>
 
-      <section class="panel">
-        <label for="cloudText">Frase curta</label>
-        <textarea id="cloudText" maxlength="80" rows="3" placeholder="até 80 caracteres"></textarea>
-        <div class="meta"><span id="counter">0/80</span><span id="status">conectando…</span></div>
-        <button id="createCloud" class="button primary" type="button">Criar nuvem</button>
+      <section class="panel object-choice" aria-label="Escolha de objeto">
+        <p class="rule-note">cada objeto entra na cena segundo regras de posição e convivência.</p>
+        <div class="object-cards" id="objectCards"></div>
+        <div class="meta"><span id="choiceLabel">nenhum objeto escolhido</span><span id="status">conectando…</span></div>
       </section>
 
-      <section class="panel controls" aria-label="Controles da nuvem">
-        <label>Posição no horizonte <input id="x" type="range" min="0" max="1" step="0.01" value="0.5" /></label>
-        <label>Altura no céu <input id="y" type="range" min="0" max="1" step="0.01" value="0.42" /></label>
-        <label>Escala da nuvem <input id="scale" type="range" min="0.35" max="2.8" step="0.01" value="1" /></label>
-        <label>Distância <input id="distance" type="range" min="0" max="1" step="0.01" value="0.45" /></label>
-        <label>Densidade <input id="density" type="range" min="0.15" max="1" step="0.01" value="0.58" /></label>
-        <label>Deriva <input id="drift" type="range" min="-0.35" max="0.35" step="0.01" value="0.04" /></label>
-        <label>Luz <input id="luminosity" type="range" min="0.2" max="1" step="0.01" value="0.58" /></label>
-        <label>Sombra <input id="shadowMass" type="range" min="0.1" max="1" step="0.01" value="0.46" /></label>
-        <label>Traço da nuvem <input id="outlineStrength" type="range" min="0.18" max="1" step="0.01" value="0.55" /></label>
+      <section class="panel controls" id="controlPanel" aria-label="Controles do objeto" hidden>
+        <label>posição horizontal <input id="x" type="range" min="0" max="1" step="0.01" value="0.5" /></label>
+        <label>altura / faixa vertical <input id="y" type="range" min="0" max="1" step="0.01" value="0.74" /></label>
+        <label>escala <input id="scale" type="range" min="0.34" max="1.28" step="0.01" value="0.78" /></label>
+        <label>rotação <input id="rotation" type="range" min="-24" max="24" step="1" value="0" /></label>
+        <label>intensidade <input id="opacity" type="range" min="0.45" max="0.96" step="0.01" value="0.82" /></label>
+        <button id="createObject" class="button primary" type="button">Inserir objeto</button>
       </section>
     </main>
     <script src="/socket.io/socket.io.js"></script>
