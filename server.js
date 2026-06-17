@@ -102,6 +102,10 @@ function textToAtmosphericSeed(text) {
     drift: clamp((seededUnit(textSeed, 5) - 0.5) * 0.16, -0.35, 0.35, 0.035),
     temperature: clamp((seededUnit(textSeed, 6) - 0.5) * 2, -1, 1, 0),
     shadowMass: clamp(0.22 + lengthRatio * 0.42 + seededUnit(textSeed, 7) * 0.26, 0.1, 1, 0.46),
+    outlineStrength: clamp(0.32 + seededUnit(textSeed, 9) * 0.5 + (1 - vowelRatio) * 0.18, 0.18, 1, 0.55),
+    brushRhythm: clamp(0.28 + seededUnit(textSeed, 10) * 0.55 + lengthRatio * 0.22, 0.15, 1, 0.55),
+    curvature: clamp(0.24 + vowelRatio * 0.42 + seededUnit(textSeed, 11) * 0.34, 0.12, 1, 0.5),
+    lobeCount: Math.round(clamp(4 + lengthRatio * 5 + seededUnit(textSeed, 12) * 4, 4, 13, 7)),
     life: Math.round(CLOUD_TTL_MIN + seededUnit(textSeed, 8) * (CLOUD_TTL_MAX - CLOUD_TTL_MIN)),
   };
 }
@@ -128,6 +132,10 @@ function validateCloudPayload(payload = {}) {
     luminosity: clamp(source.luminosity, 0.2, 1, 0.58),
     shadowMass: clamp(source.shadowMass, 0.1, 1, 0.46),
     opacity: clamp(source.opacity, 0.12, 0.92, 0.74),
+    outlineStrength: clamp(source.outlineStrength, 0.18, 1, undefined),
+    brushRhythm: clamp(source.brushRhythm, 0.15, 1, undefined),
+    curvature: clamp(source.curvature, 0.12, 1, undefined),
+    lobeCount: Math.round(clamp(source.lobeCount, 4, 13, undefined)),
   };
 }
 
@@ -212,6 +220,10 @@ io.on('connection', (socket) => {
       drift: clamp(payload?.drift, -0.35, 0.35, atmosphere.drift),
       luminosity: clamp(payload?.luminosity, 0.2, 1, atmosphere.luminosity),
       shadowMass: clamp(payload?.shadowMass, 0.1, 1, atmosphere.shadowMass),
+      outlineStrength: clamp(data.outlineStrength, 0.18, 1, atmosphere.outlineStrength),
+      brushRhythm: clamp(data.brushRhythm, 0.15, 1, atmosphere.brushRhythm),
+      curvature: clamp(data.curvature, 0.12, 1, atmosphere.curvature),
+      lobeCount: Math.round(clamp(data.lobeCount, 4, 13, atmosphere.lobeCount)),
       ambient: false,
       createdAt: now,
       updatedAt: now,
@@ -240,6 +252,10 @@ io.on('connection', (socket) => {
       luminosity: data.luminosity,
       shadowMass: data.shadowMass,
       opacity: data.opacity,
+      outlineStrength: clamp(data.outlineStrength, 0.18, 1, cloud.outlineStrength),
+      brushRhythm: clamp(data.brushRhythm, 0.15, 1, cloud.brushRhythm),
+      curvature: clamp(data.curvature, 0.12, 1, cloud.curvature),
+      lobeCount: Math.round(clamp(data.lobeCount, 4, 13, cloud.lobeCount)),
       updatedAt: Date.now(),
     });
     clouds.set(cloud.id, cloud);
