@@ -10,23 +10,35 @@
     <main class="participant-shell">
       <header>
         <p class="eyebrow">Visitante</p>
-        <h1>Escolha um objeto</h1>
-        <p>escolha um objeto e insira-o na composição coletiva.</p>
+        <h1>Escolha um personagem-agente</h1>
+        <p>escolha um personagem, ajuste seu campo e envie um agente simbólico para a paisagem-mesa coletiva.</p>
       </header>
 
-      <section class="panel object-choice" aria-label="Escolha de objeto">
-        <p class="rule-note">cada objeto entra na cena segundo regras de posição e convivência.</p>
+      <section class="panel object-choice" aria-label="Escolha de personagem">
+        <p class="rule-note">cada visitante controla apenas um personagem ativo por vez; ele permanece por tempo limitado e influencia a atmosfera ao redor.</p>
         <div class="object-cards" id="objectCards"></div>
-        <div class="meta"><span id="choiceLabel">nenhum objeto escolhido</span><span id="status">conectando…</span></div>
+        <div class="meta"><span id="choiceLabel">nenhum personagem escolhido</span><span id="status">conectando…</span></div>
       </section>
 
-      <section class="panel controls" id="controlPanel" aria-label="Controles do objeto" hidden>
+      <section class="panel controls" id="controlPanel" aria-label="Controles do personagem" hidden>
         <label>posição horizontal <input id="x" type="range" min="0" max="1" step="0.01" value="0.5" /></label>
-        <label>altura / faixa vertical <input id="y" type="range" min="0" max="1" step="0.01" value="0.74" /></label>
-        <label>escala <input id="scale" type="range" min="0.34" max="1.28" step="0.01" value="0.78" /></label>
-        <label>rotação <input id="rotation" type="range" min="-24" max="24" step="1" value="0" /></label>
-        <label>intensidade <input id="opacity" type="range" min="0.45" max="0.96" step="0.01" value="0.82" /></label>
-        <button id="createObject" class="button primary" type="button">Inserir objeto</button>
+        <label>zona / altura permitida <input id="y" type="range" min="0" max="1" step="0.01" value="0.74" /></label>
+        <label>ritmo <input id="rhythm" type="range" min="0.12" max="1.4" step="0.01" value="0.7" /></label>
+        <label>intensidade do campo <input id="fieldStrength" type="range" min="0.18" max="1" step="0.01" value="0.55" /></label>
+        <label>velocidade lenta <input id="speed" type="range" min="0" max="0.55" step="0.01" value="0.24" /></label>
+        <label>direção
+          <select id="direction">
+            <option value="right">direita</option>
+            <option value="left">esquerda</option>
+          </select>
+        </label>
+        <label>permanência ou repouso
+          <select id="mode">
+            <option value="move">permanecer em deslocamento</option>
+            <option value="rest">repousar / observar</option>
+          </select>
+        </label>
+        <button id="createObject" class="button primary" type="button">Ativar personagem</button>
       </section>
     </main>
     <script src="/socket.io/socket.io.js"></script>

@@ -16,14 +16,23 @@ const io = new Server(server, {
 
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_OBJECTS = 80;
+const MAX_CHARACTERS = 80;
 const OBJECT_TTL_MIN = 1000 * 60 * 6;
 const OBJECT_TTL_MAX = 1000 * 60 * 14;
 const OBJECT_TTL = 1000 * 60 * 9;
+const CHARACTER_TTL_MIN = 1000 * 60 * 5;
+const CHARACTER_TTL_MAX = 1000 * 60 * 12;
+const CHARACTER_TTL = 1000 * 60 * 8;
 const EVAPORATION_TIME = 1000 * 60 * 2;
 const ZONES = {
   upper: { xMin: 0.05, xMax: 0.95, yMin: 0.05, yMax: 0.38 },
   middle: { xMin: 0.08, xMax: 0.92, yMin: 0.30, yMax: 0.65 },
   lower: { xMin: 0.08, xMax: 0.92, yMin: 0.58, yMax: 0.92 },
+};
+const CHARACTER_TYPES = {
+  walker: { zone: 'lower', scaleMin: 0.74, scaleMax: 1.2, speedMin: 0.08, speedMax: 0.55, rhythmMin: 0.35, rhythmMax: 1.4, fieldMin: 0.18, fieldMax: 0.85, radiusMin: 0.07, radiusMax: 0.18, frameCount: 6, frameRate: 9 },
+  watcher: { zone: 'middle', scaleMin: 0.8, scaleMax: 1.25, speedMin: 0, speedMax: 0.24, rhythmMin: 0.12, rhythmMax: 0.9, fieldMin: 0.22, fieldMax: 1, radiusMin: 0.11, radiusMax: 0.24, frameCount: 4, frameRate: 5 },
+  carrier: { zone: 'lowerMiddle', scaleMin: 0.78, scaleMax: 1.22, speedMin: 0.05, speedMax: 0.42, rhythmMin: 0.25, rhythmMax: 1.15, fieldMin: 0.26, fieldMax: 1, radiusMin: 0.1, radiusMax: 0.26, frameCount: 6, frameRate: 7 },
 };
 const OBJECT_TYPES = {
   green_bundle: { zone: 'lower', scaleMin: 0.42, scaleMax: 1.28, rotationMin: -18, rotationMax: 18, opacityMin: 0.45, opacityMax: 0.95 },
@@ -35,12 +44,16 @@ const RATE_LIMITS = {
   'object:create': { windowMs: 10000, max: 3 },
   'object:update': { windowMs: 1000, max: 8 },
   'object:remove': { windowMs: 3000, max: 3 },
+  'character:create': { windowMs: 10000, max: 4 },
+  'character:update': { windowMs: 1000, max: 12 },
+  'character:remove': { windowMs: 3000, max: 3 },
   'scene:reset': { windowMs: 10000, max: 2 },
 };
 
 /** In-memory scene state. No personal data is stored. */
 const agents = new Map();
 const objects = new Map();
+const characters = new Map();
 const rateBuckets = new Map();
 
 app.get('/assets/objects/:objectName.png', (req, res) => {
@@ -96,11 +109,56 @@ function seededUnit(seed, salt = 0) {
 function serializeScene() {
   return {
     objects: [...objects.values()],
+    characters: [...characters.values()],
     agents: [...agents.keys()],
     maxObjects: MAX_OBJECTS,
     zones: ZONES,
     objectTypes: OBJECT_TYPES,
+    characterTypes: CHARACTER_TYPES,
     serverTime: Date.now(),
+  };
+}
+
+
+function zoneForCharacter(zoneName) {
+  if (zoneName === 'lowerMiddle') return { xMin: 0.08, xMax: 0.92, yMin: 0.46, yMax: 0.88 };
+  return ZONES[zoneName] || ZONES.middle;
+}
+
+function validateCharacterPayload(payload = {}, existing = null) {
+  const source = isPlainObject(payload) ? payload : {};
+  const type = Object.prototype.hasOwnProperty.call(CHARACTER_TYPES, source.type) ? source.type : existing?.type;
+  const config = CHARACTER_TYPES[type] || CHARACTER_TYPES.walker;
+  const zoneName = source.allowedZone && (ZONES[source.allowedZone] || source.allowedZone === 'lowerMiddle') ? source.allowedZone : (existing?.allowedZone || config.zone);
+  const zone = zoneForCharacter(zoneName);
+  const x = clamp(source.x, zone.xMin, zone.xMax, existing?.x ?? (zone.xMin + zone.xMax) / 2);
+  const y = clamp(source.y, zone.yMin, zone.yMax, existing?.y ?? (zone.yMin + zone.yMax) / 2);
+  const direction = source.direction === 'left' ? 'left' : 'right';
+  const speed = source.mode === 'rest' ? 0 : clamp(source.speed, config.speedMin, config.speedMax, existing?.speed ?? (config.speedMin + config.speedMax) / 2);
+  return {
+    type: type || 'walker',
+    spriteKey: source.spriteKey || type || 'walker',
+    x,
+    y,
+    targetX: clamp(source.targetX, zone.xMin, zone.xMax, existing?.targetX ?? x),
+    targetY: clamp(source.targetY, zone.yMin, zone.yMax, existing?.targetY ?? y),
+    vx: clamp(source.vx, -0.02, 0.02, existing?.vx ?? 0),
+    vy: clamp(source.vy, -0.02, 0.02, existing?.vy ?? 0),
+    scale: clamp(source.scale, config.scaleMin, config.scaleMax, existing?.scale ?? 0.94),
+    rotation: clamp(source.rotation, -10, 10, existing?.rotation ?? 0),
+    direction,
+    speed,
+    rhythm: clamp(source.rhythm, config.rhythmMin, config.rhythmMax, existing?.rhythm ?? 0.7),
+    fieldStrength: clamp(source.fieldStrength, config.fieldMin, config.fieldMax, existing?.fieldStrength ?? 0.55),
+    fieldRadius: clamp(source.fieldRadius, config.radiusMin, config.radiusMax, existing?.fieldRadius ?? 0.15),
+    mode: source.mode === 'rest' ? 'rest' : 'move',
+    allowedZone: zoneName,
+    zIndex: clamp(source.zIndex, 0, 1, existing?.zIndex ?? y),
+    opacity: clamp(source.opacity, 0.25, 1, existing?.opacity ?? 0.9),
+    frameIndex: clamp(source.frameIndex, 0, config.frameCount - 1, existing?.frameIndex ?? 0),
+    frameCount: config.frameCount,
+    frameRate: config.frameRate,
+    ambient: isPlainObject(source.ambient) ? source.ambient : existing?.ambient || { hue: type === 'carrier' ? 48 : type === 'watcher' ? 190 : 120 },
   };
 }
 
@@ -151,6 +209,13 @@ function withGuard(socket, eventName, acknowledge, handler) {
   }
 }
 
+function removeCharacter(id, reason = 'removed') {
+  const character = characters.get(id);
+  if (!character) return;
+  characters.delete(id);
+  io.emit('character:remove', { id, reason });
+}
+
 function removeObject(id, reason = 'removed') {
   const object = objects.get(id);
   if (!object) return;
@@ -158,11 +223,25 @@ function removeObject(id, reason = 'removed') {
   io.emit('object:remove', { id, reason });
 }
 
+function enforceCharacterLimit() {
+  while (characters.size > MAX_CHARACTERS) {
+    const oldest = [...characters.values()].sort((a, b) => a.createdAt - b.createdAt)[0];
+    if (!oldest) return;
+    removeCharacter(oldest.id, 'capacity');
+  }
+}
+
 function enforceObjectLimit() {
   while (objects.size > MAX_OBJECTS) {
     const oldest = [...objects.values()].sort((a, b) => a.createdAt - b.createdAt)[0];
     if (!oldest) return;
     removeObject(oldest.id, 'capacity');
+  }
+}
+
+function removeAgentCharacter(agentId, reason = 'agent:disconnect') {
+  for (const character of characters.values()) {
+    if (character.agentId === agentId) removeCharacter(character.id, reason);
   }
 }
 
@@ -180,6 +259,47 @@ io.on('connection', (socket) => {
     log('visitante conectado', { socketId: socket.id, visitors: agents.size });
     socket.emit('scene:state', serializeScene());
     if (typeof acknowledge === 'function') acknowledge({ ok: true, agentId: socket.id });
+  }));
+
+
+  socket.on('character:create', (payload, acknowledge) => withGuard(socket, 'character:create', acknowledge, () => {
+    agents.set(socket.id, agents.get(socket.id) || { id: socket.id, joinedAt: Date.now() });
+    const data = validateCharacterPayload(payload);
+    removeAgentCharacter(socket.id, 'replaced');
+    const now = Date.now();
+    const seed = hashString(`${data.type}:${socket.id}:${now}`);
+    const character = {
+      id: `${socket.id}-${now}`,
+      agentId: socket.id,
+      ...data,
+      seed,
+      life: Math.round(CHARACTER_TTL_MIN + seededUnit(seed, 5) * (CHARACTER_TTL_MAX - CHARACTER_TTL_MIN)),
+      createdAt: now,
+      updatedAt: now,
+    };
+    characters.set(character.id, character);
+    enforceCharacterLimit();
+    io.emit('character:create', character);
+    log('personagem criado', { characterId: character.id, type: character.type, characters: characters.size });
+    if (typeof acknowledge === 'function') acknowledge({ ok: true, character, agentId: socket.id });
+  }));
+
+  socket.on('character:update', (payload, acknowledge) => withGuard(socket, 'character:update', acknowledge, () => {
+    const character = [...characters.values()].find((item) => item.agentId === socket.id);
+    if (!character) {
+      if (typeof acknowledge === 'function') acknowledge({ ok: false, error: 'Nenhum personagem ativo para este visitante.' });
+      return;
+    }
+    const data = validateCharacterPayload({ ...character, ...(isPlainObject(payload) ? payload : {}) }, character);
+    Object.assign(character, data, { updatedAt: Date.now() });
+    characters.set(character.id, character);
+    io.emit('character:update', character);
+    if (typeof acknowledge === 'function') acknowledge({ ok: true, character });
+  }));
+
+  socket.on('character:remove', (_payload, acknowledge) => withGuard(socket, 'character:remove', acknowledge, () => {
+    removeAgentCharacter(socket.id, 'visitor');
+    if (typeof acknowledge === 'function') acknowledge({ ok: true });
   }));
 
   socket.on('object:create', (payload, acknowledge) => withGuard(socket, 'object:create', acknowledge, () => {
@@ -229,6 +349,7 @@ io.on('connection', (socket) => {
 
   socket.on('scene:reset', (_payload, acknowledge) => withGuard(socket, 'scene:reset', acknowledge, () => {
     objects.clear();
+    characters.clear();
     log('reset de cena', { socketId: socket.id });
     io.emit('scene:reset', { at: Date.now() });
     if (typeof acknowledge === 'function') acknowledge({ ok: true });
@@ -239,6 +360,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', (reason) => {
     agents.delete(socket.id);
     removeAgentObject(socket.id, 'agent:disconnect');
+    removeAgentCharacter(socket.id, 'agent:disconnect');
     rateBuckets.forEach((_value, key) => {
       if (key.startsWith(`${socket.id}:`)) rateBuckets.delete(key);
     });
@@ -250,6 +372,18 @@ io.on('connection', (socket) => {
 /** Fade old objects before removal, then all clients are updated. */
 setInterval(() => {
   const now = Date.now();
+  for (const character of characters.values()) {
+    const age = now - character.createdAt;
+    const ttl = clamp(character.life, CHARACTER_TTL_MIN, CHARACTER_TTL_MAX, CHARACTER_TTL);
+    if (age > ttl + EVAPORATION_TIME) {
+      removeCharacter(character.id, 'expired');
+    } else if (age > ttl) {
+      const fade = 1 - (age - ttl) / EVAPORATION_TIME;
+      character.opacity = Math.max(0, Math.min(character.opacity, fade * 0.65));
+      character.updatedAt = now;
+      io.emit('character:update', character);
+    }
+  }
   for (const object of objects.values()) {
     const age = now - object.createdAt;
     const ttl = clamp(object.life, OBJECT_TTL_MIN, OBJECT_TTL_MAX, OBJECT_TTL);
