@@ -115,3 +115,16 @@ select {
 @media (max-width: 680px) {
   .character-glyph { grid-row: span 2; height: 6rem; }
 }
+.persona-preview {
+  display: block;
+  width: 100%;
+  height: 7.4rem;
+  border-radius: 18px;
+  background-repeat: no-repeat;
+  background-size: 1500% 700%;
+  background-position: calc(var(--sprite-x) * 100% / 14) calc(var(--sprite-y) * 100% / 6);
+  filter: drop-shadow(0 14px 18px rgba(32, 28, 22, 0.16));
+}
+@media (max-width: 680px) {
+  .persona-preview { grid-row: span 2; height: 6rem; }
+}

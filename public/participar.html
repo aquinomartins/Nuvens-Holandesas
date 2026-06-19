@@ -11,11 +11,11 @@
       <header>
         <p class="eyebrow">Visitante</p>
         <h1>Escolha um personagem-agente</h1>
-        <p>escolha um personagem, ajuste seu campo e envie um agente simbólico para a paisagem-mesa coletiva.</p>
+        <p>escolha um dos três personagens de <code>personas.png</code> e envie sua contribuição para a correria coletiva da exposição.</p>
       </header>
 
       <section class="panel object-choice" aria-label="Escolha de personagem">
-        <p class="rule-note">cada visitante controla apenas um personagem ativo por vez; ele permanece por tempo limitado e influencia a atmosfera ao redor.</p>
+        <p class="rule-note">cada visitante controla apenas um personagem participativo por vez; a multidão inicial da exposição usa outra spritesheet e permanece separada no código.</p>
         <div class="object-cards" id="objectCards"></div>
         <div class="meta"><span id="choiceLabel">nenhum personagem escolhido</span><span id="status">conectando…</span></div>
       </section>
@@ -30,12 +30,6 @@
           <select id="direction">
             <option value="right">direita</option>
             <option value="left">esquerda</option>
-          </select>
-        </label>
-        <label>permanência ou repouso
-          <select id="mode">
-            <option value="move">permanecer em deslocamento</option>
-            <option value="rest">repousar / observar</option>
           </select>
         </label>
         <button id="createObject" class="button primary" type="button">Ativar personagem</button>

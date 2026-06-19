@@ -4,51 +4,59 @@ const choiceLabel = document.querySelector('#choiceLabel');
 const objectCards = document.querySelector('#objectCards');
 const controlPanel = document.querySelector('#controlPanel');
 const createButton = document.querySelector('#createObject');
-const controls = ['x', 'y', 'speed', 'rhythm', 'fieldStrength', 'direction', 'mode'].reduce((acc, id) => {
+const controls = ['x', 'y', 'speed', 'rhythm', 'fieldStrength', 'direction'].reduce((acc, id) => {
   acc[id] = document.querySelector(`#${id}`);
   return acc;
 }, {});
 
+const PERSONA_SHEET = { src: '/assets/characters/personas.png', cols: 15, rows: 7 };
 const CHARACTERS = {
-  walker: { label: 'Walker', note: 'deslocamento / rastro curto / zona inferior', zone: { xMin: 0.08, xMax: 0.92, yMin: 0.58, yMax: 0.92 }, rhythm: 0.8, speed: 0.32, field: 0.45 },
-  watcher: { label: 'Watcher', note: 'presença / campo circular / zona média', zone: { xMin: 0.08, xMax: 0.92, yMin: 0.30, yMax: 0.65 }, rhythm: 0.4, speed: 0.08, field: 0.62 },
-  carrier: { label: 'Carrier', note: 'mediação / atração / zona inferior-média', zone: { xMin: 0.08, xMax: 0.92, yMin: 0.46, yMax: 0.88 }, rhythm: 0.65, speed: 0.22, field: 0.72 },
+  persona_01: { label: 'Persona 01', note: 'contribuição do público / deslocamento contínuo', spriteIndex: 12, speed: 0.3, rhythm: 0.8, field: 0.45, hue: 126 },
+  persona_02: { label: 'Persona 02', note: 'contribuição do público / presença lenta', spriteIndex: 44, speed: 0.16, rhythm: 0.55, field: 0.68, hue: 194 },
+  persona_03: { label: 'Persona 03', note: 'contribuição do público / travessia densa', spriteIndex: 81, speed: 0.24, rhythm: 0.65, field: 0.74, hue: 45 },
 };
+const PARTICIPANT_ZONE = { xMin: 0.08, xMax: 0.92, yMin: 0.52, yMax: 0.94 };
 let selectedType = null;
 let activeCharacter = null;
 
 function setStatus(message) { statusEl.textContent = message; }
-function selectedRules() { return CHARACTERS[selectedType] || CHARACTERS.walker; }
+function selectedRules() { return CHARACTERS[selectedType] || CHARACTERS.persona_01; }
+function spritePreviewStyle(spriteIndex) {
+  const col = spriteIndex % PERSONA_SHEET.cols;
+  const row = Math.floor(spriteIndex / PERSONA_SHEET.cols);
+  return `--sprite-x:${col};--sprite-y:${row};background-image:url('${PERSONA_SHEET.src}')`;
+}
 function syncControlLimits() {
   const rules = selectedRules();
-  controls.x.min = rules.zone.xMin; controls.x.max = rules.zone.xMax; controls.x.value = (rules.zone.xMin + rules.zone.xMax) / 2;
-  controls.y.min = rules.zone.yMin; controls.y.max = rules.zone.yMax; controls.y.value = (rules.zone.yMin + rules.zone.yMax) / 2;
+  controls.x.min = PARTICIPANT_ZONE.xMin; controls.x.max = PARTICIPANT_ZONE.xMax; controls.x.value = (PARTICIPANT_ZONE.xMin + PARTICIPANT_ZONE.xMax) / 2;
+  controls.y.min = PARTICIPANT_ZONE.yMin; controls.y.max = PARTICIPANT_ZONE.yMax; controls.y.value = 0.78;
   controls.speed.value = rules.speed;
   controls.rhythm.value = rules.rhythm;
   controls.fieldStrength.value = rules.field;
-  controls.direction.value = selectedType === 'watcher' ? 'right' : 'left';
-  controls.mode.value = selectedType === 'watcher' ? 'rest' : 'move';
+  controls.direction.value = 'right';
 }
 function payloadFromControls() {
+  const rules = selectedRules();
   const x = Number(controls.x.value);
   const y = Number(controls.y.value);
   return {
     type: selectedType,
     spriteKey: selectedType,
+    spriteSource: 'personas',
+    spriteIndex: rules.spriteIndex,
     x,
     y,
     targetX: x,
     targetY: y,
     direction: controls.direction.value,
-    speed: controls.speed.value,
-    rhythm: controls.rhythm.value,
-    fieldStrength: controls.fieldStrength.value,
+    speed: Number(controls.speed.value),
+    rhythm: Number(controls.rhythm.value),
+    fieldStrength: Number(controls.fieldStrength.value),
     fieldRadius: 0.08 + Number(controls.fieldStrength.value) * 0.16,
-    mode: controls.mode.value,
-    allowedZone: selectedType === 'carrier' ? 'lowerMiddle' : (selectedType === 'watcher' ? 'middle' : 'lower'),
-    scale: selectedType === 'watcher' ? 1.02 : 0.96,
-    opacity: 0.92,
-    ambient: { hue: selectedType === 'carrier' ? 45 : selectedType === 'watcher' ? 194 : 125 },
+    allowedZone: 'lower',
+    scale: 0.62,
+    opacity: 0.96,
+    ambient: { hue: rules.hue },
   };
 }
 function selectCharacter(type) {
@@ -56,14 +64,14 @@ function selectCharacter(type) {
   activeCharacter = null;
   [...objectCards.querySelectorAll('button')].forEach((button) => button.classList.toggle('is-selected', button.dataset.type === type));
   choiceLabel.textContent = CHARACTERS[type].label;
-  createButton.textContent = 'Ativar personagem';
+  createButton.textContent = 'Inserir na exposição';
   controlPanel.hidden = false;
   syncControlLimits();
 }
 function renderCards() {
   objectCards.innerHTML = Object.entries(CHARACTERS).map(([type, character]) => `
     <button class="object-card character-card" type="button" data-type="${type}">
-      <span class="character-glyph character-glyph--${type}" aria-hidden="true"></span>
+      <span class="persona-preview" style="${spritePreviewStyle(character.spriteIndex)}" aria-hidden="true"></span>
       <strong>${character.label}</strong>
       <span>${character.note}</span>
     </button>`).join('');
@@ -75,10 +83,10 @@ function renderCards() {
 function submitCharacter() {
   if (!selectedType) { setStatus('escolha um personagem'); return; }
   socket.emit(activeCharacter ? 'character:update' : 'character:create', payloadFromControls(), (response) => {
-    if (!response?.ok) { setStatus(response?.error || 'não foi possível ativar'); return; }
+    if (!response?.ok) { setStatus(response?.error || 'não foi possível inserir'); return; }
     activeCharacter = response.character;
     createButton.textContent = 'Atualizar personagem';
-    setStatus(activeCharacter ? 'personagem ativo' : 'personagem inserido');
+    setStatus('personagem na exposição');
   });
 }
 

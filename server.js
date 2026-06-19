@@ -3,6 +3,7 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 const { OBJECT_PNG_ASSETS } = require('./objectPngAssets');
+const { CHARACTER_PNG_ASSETS } = require('./characterPngAssets');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
@@ -30,9 +31,9 @@ const ZONES = {
   lower: { xMin: 0.08, xMax: 0.92, yMin: 0.58, yMax: 0.92 },
 };
 const CHARACTER_TYPES = {
-  walker: { zone: 'lower', scaleMin: 0.74, scaleMax: 1.2, speedMin: 0.08, speedMax: 0.55, rhythmMin: 0.35, rhythmMax: 1.4, fieldMin: 0.18, fieldMax: 0.85, radiusMin: 0.07, radiusMax: 0.18, frameCount: 6, frameRate: 9 },
-  watcher: { zone: 'middle', scaleMin: 0.8, scaleMax: 1.25, speedMin: 0, speedMax: 0.24, rhythmMin: 0.12, rhythmMax: 0.9, fieldMin: 0.22, fieldMax: 1, radiusMin: 0.11, radiusMax: 0.24, frameCount: 4, frameRate: 5 },
-  carrier: { zone: 'lowerMiddle', scaleMin: 0.78, scaleMax: 1.22, speedMin: 0.05, speedMax: 0.42, rhythmMin: 0.25, rhythmMax: 1.15, fieldMin: 0.26, fieldMax: 1, radiusMin: 0.1, radiusMax: 0.26, frameCount: 6, frameRate: 7 },
+  persona_01: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.08, speedMax: 0.55, rhythmMin: 0.35, rhythmMax: 1.4, fieldMin: 0.18, fieldMax: 0.85, radiusMin: 0.07, radiusMax: 0.18, spriteIndex: 12, hue: 126 },
+  persona_02: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.04, speedMax: 0.42, rhythmMin: 0.25, rhythmMax: 1.15, fieldMin: 0.22, fieldMax: 1, radiusMin: 0.1, radiusMax: 0.24, spriteIndex: 44, hue: 194 },
+  persona_03: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.05, speedMax: 0.5, rhythmMin: 0.25, rhythmMax: 1.25, fieldMin: 0.2, fieldMax: 1, radiusMin: 0.09, radiusMax: 0.24, spriteIndex: 81, hue: 45 },
 };
 const OBJECT_TYPES = {
   green_bundle: { zone: 'lower', scaleMin: 0.42, scaleMax: 1.28, rotationMin: -18, rotationMax: 18, opacityMin: 0.45, opacityMax: 0.95 },
@@ -55,6 +56,18 @@ const agents = new Map();
 const objects = new Map();
 const characters = new Map();
 const rateBuckets = new Map();
+
+app.get('/assets/characters/:characterName.png', (req, res) => {
+  const asset = CHARACTER_PNG_ASSETS[req.params.characterName];
+  if (!asset) {
+    res.status(404).end();
+    return;
+  }
+  res
+    .type('png')
+    .set('Cache-Control', 'public, max-age=31536000, immutable')
+    .send(Buffer.from(asset, 'base64'));
+});
 
 app.get('/assets/objects/:objectName.png', (req, res) => {
   const asset = OBJECT_PNG_ASSETS[req.params.objectName];
@@ -128,7 +141,7 @@ function zoneForCharacter(zoneName) {
 function validateCharacterPayload(payload = {}, existing = null) {
   const source = isPlainObject(payload) ? payload : {};
   const type = Object.prototype.hasOwnProperty.call(CHARACTER_TYPES, source.type) ? source.type : existing?.type;
-  const config = CHARACTER_TYPES[type] || CHARACTER_TYPES.walker;
+  const config = CHARACTER_TYPES[type] || CHARACTER_TYPES.persona_01;
   const zoneName = source.allowedZone && (ZONES[source.allowedZone] || source.allowedZone === 'lowerMiddle') ? source.allowedZone : (existing?.allowedZone || config.zone);
   const zone = zoneForCharacter(zoneName);
   const x = clamp(source.x, zone.xMin, zone.xMax, existing?.x ?? (zone.xMin + zone.xMax) / 2);
@@ -136,8 +149,10 @@ function validateCharacterPayload(payload = {}, existing = null) {
   const direction = source.direction === 'left' ? 'left' : 'right';
   const speed = source.mode === 'rest' ? 0 : clamp(source.speed, config.speedMin, config.speedMax, existing?.speed ?? (config.speedMin + config.speedMax) / 2);
   return {
-    type: type || 'walker',
-    spriteKey: source.spriteKey || type || 'walker',
+    type: type || 'persona_01',
+    spriteKey: type || 'persona_01',
+    spriteSource: 'personas',
+    spriteIndex: clamp(source.spriteIndex, 0, 104, existing?.spriteIndex ?? config.spriteIndex),
     x,
     y,
     targetX: clamp(source.targetX, zone.xMin, zone.xMax, existing?.targetX ?? x),
@@ -155,10 +170,10 @@ function validateCharacterPayload(payload = {}, existing = null) {
     allowedZone: zoneName,
     zIndex: clamp(source.zIndex, 0, 1, existing?.zIndex ?? y),
     opacity: clamp(source.opacity, 0.25, 1, existing?.opacity ?? 0.9),
-    frameIndex: clamp(source.frameIndex, 0, config.frameCount - 1, existing?.frameIndex ?? 0),
-    frameCount: config.frameCount,
-    frameRate: config.frameRate,
-    ambient: isPlainObject(source.ambient) ? source.ambient : existing?.ambient || { hue: type === 'carrier' ? 48 : type === 'watcher' ? 190 : 120 },
+    frameIndex: 0,
+    frameCount: 1,
+    frameRate: 1,
+    ambient: isPlainObject(source.ambient) ? source.ambient : existing?.ambient || { hue: config.hue },
   };
 }
 
