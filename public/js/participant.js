@@ -10,14 +10,37 @@ const controls = ['x', 'y', 'speed', 'rhythm', 'fieldStrength', 'direction'].red
 }, {});
 
 const PERSONA_SHEET = { src: '/assets/characters/personas.png', cols: 15, rows: 7 };
-const CHARACTERS = {
-  persona_01: { label: 'Persona 01', note: 'contribuição do público / deslocamento contínuo', spriteIndex: 12, speed: 0.3, rhythm: 0.8, field: 0.45, hue: 126 },
-  persona_02: { label: 'Persona 02', note: 'contribuição do público / presença lenta', spriteIndex: 44, speed: 0.16, rhythm: 0.55, field: 0.68, hue: 194 },
-  persona_03: { label: 'Persona 03', note: 'contribuição do público / travessia densa', spriteIndex: 81, speed: 0.24, rhythm: 0.65, field: 0.74, hue: 45 },
-};
+const PERSONA_COUNT = PERSONA_SHEET.cols * PERSONA_SHEET.rows;
+const CHARACTER_PRESETS = [
+  { type: 'persona_01', note: 'contribuição do público / deslocamento contínuo', speed: 0.3, rhythm: 0.8, field: 0.45, hue: 126 },
+  { type: 'persona_02', note: 'contribuição do público / presença lenta', speed: 0.16, rhythm: 0.55, field: 0.68, hue: 194 },
+  { type: 'persona_03', note: 'contribuição do público / travessia densa', speed: 0.24, rhythm: 0.65, field: 0.74, hue: 45 },
+];
+const CHARACTERS = createRandomCharacters();
 const PARTICIPANT_ZONE = { xMin: 0.08, xMax: 0.92, yMin: 0.52, yMax: 0.94 };
 let selectedType = null;
 let activeCharacter = null;
+
+function randomSpriteIndexes(count) {
+  const indexes = Array.from({ length: PERSONA_COUNT }, (_, index) => index);
+  for (let index = indexes.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [indexes[index], indexes[randomIndex]] = [indexes[randomIndex], indexes[index]];
+  }
+  return indexes.slice(0, count);
+}
+function createRandomCharacters() {
+  const spriteIndexes = randomSpriteIndexes(CHARACTER_PRESETS.length);
+  return CHARACTER_PRESETS.reduce((characters, preset, index) => {
+    const spriteIndex = spriteIndexes[index];
+    characters[preset.type] = {
+      ...preset,
+      label: `Persona ${String(spriteIndex + 1).padStart(3, '0')}`,
+      spriteIndex,
+    };
+    return characters;
+  }, {});
+}
 
 function setStatus(message) { statusEl.textContent = message; }
 function selectedRules() { return CHARACTERS[selectedType] || CHARACTERS.persona_01; }
