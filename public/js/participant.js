@@ -13,9 +13,9 @@ const PERSONA_SHEET = { src: window.Nuvens.characterAsset('personas2.png'), cols
 window.Nuvens.logImageLoad('preview participativo', PERSONA_SHEET.src);
 const PERSONA_COUNT = PERSONA_SHEET.cols * PERSONA_SHEET.rows;
 const CHARACTER_PRESETS = [
-  { type: 'persona_01', note: 'contribuição do público / deslocamento contínuo', speed: 0.03, rhythm: 0.8, field: 0.45, hue: 126 },
-  { type: 'persona_02', note: 'contribuição do público / presença lenta', speed: 0.016, rhythm: 0.55, field: 0.68, hue: 194 },
-  { type: 'persona_03', note: 'contribuição do público / travessia densa', speed: 0.024, rhythm: 0.65, field: 0.74, hue: 45 },
+  { type: 'persona_01', note: 'contribuição do público / deslocamento contínuo', speed: 0.3, rhythm: 0.8, field: 0.45, hue: 126 },
+  { type: 'persona_02', note: 'contribuição do público / presença lenta', speed: 0.16, rhythm: 0.55, field: 0.68, hue: 194 },
+  { type: 'persona_03', note: 'contribuição do público / travessia densa', speed: 0.24, rhythm: 0.65, field: 0.74, hue: 45 },
 ];
 const CHARACTERS = createRandomCharacters();
 const PARTICIPANT_ZONE = { xMin: 0.08, xMax: 0.92, yMin: 0.52, yMax: 0.94 };
