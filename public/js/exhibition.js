@@ -4,7 +4,7 @@ const socket = window.Nuvens.createSocket();
 const connectionStatus = document.querySelector('#connectionStatus');
 
 const SHEETS = {
-  initialCrowd: { src: '/assets/characters/personas1.png', rows: 15, cols: 7 },
+  initialCrowd: { src: '/assets/characters/personas.png', rows: 15, cols: 7 },
   participatory: { src: '/assets/characters/open-peeps-sheet.png', rows: 15, cols: 7 },
 };
 const PARTICIPANT_LIMIT = 80;
