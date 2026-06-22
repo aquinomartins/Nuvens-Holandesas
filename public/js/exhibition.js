@@ -4,8 +4,8 @@ const socket = window.Nuvens.createSocket();
 const connectionStatus = document.querySelector('#connectionStatus');
 
 const SHEETS = {
-  initialCrowd: { src: '/assets/characters/personas2.png', rows: 15, cols: 7 },
-  participatory: { src: '/assets/characters/open-peeps-sheet.png', rows: 15, cols: 7 },
+  initialCrowd: { src: window.Nuvens.characterAsset('personas2.png'), rows: 15, cols: 7 },
+  participatory: { src: window.Nuvens.characterAsset('personas2.png'), rows: 15, cols: 7 },
 };
 const PARTICIPANT_LIMIT = 80;
 const EVAPORATION_TIME = 1000 * 60 * 2;
@@ -122,9 +122,15 @@ function createInitialPeeps() {
 function loadSheets() {
   Object.entries(SHEETS).forEach(([key, config]) => {
     const image = new Image();
+    window.Nuvens.logImageLoad(key, config.src);
     image.onload = () => {
+      window.Nuvens.logImageReady(key, config.src);
       if (key === 'initialCrowd') createInitialPeeps();
       if (key === 'participatory') participantCharacters.forEach((character) => ensureParticipantPeep(character));
+    };
+    image.onerror = () => {
+      window.Nuvens.logImageError(key, config.src);
+      setConnectionError(`imagem não encontrada: ${config.src}`);
     };
     image.src = config.src;
     sheets.set(key, { config, image });

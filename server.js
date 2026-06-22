@@ -57,6 +57,15 @@ const objects = new Map();
 const characters = new Map();
 const rateBuckets = new Map();
 
+app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
+  immutable: false,
+  maxAge: 0,
+  etag: true,
+  setHeaders(res) {
+    res.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  },
+}));
+
 app.get('/assets/characters/:characterName.png', (req, res) => {
   const asset = CHARACTER_PNG_ASSETS[req.params.characterName];
   if (!asset) {
