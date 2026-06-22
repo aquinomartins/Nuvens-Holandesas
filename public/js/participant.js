@@ -9,7 +9,7 @@ const controls = ['x', 'y', 'speed', 'rhythm', 'fieldStrength', 'direction'].red
   return acc;
 }, {});
 
-const PERSONA_SHEET = { src: '/assets/characters/personas1.png', cols: 15, rows: 7 };
+const PERSONA_SHEET = { src: '/assets/characters/open-peeps-sheet.png', cols: 15, rows: 7 };
 const PERSONA_COUNT = PERSONA_SHEET.cols * PERSONA_SHEET.rows;
 const CHARACTER_PRESETS = [
   { type: 'persona_01', note: 'contribuição do público / deslocamento contínuo', speed: 0.3, rhythm: 0.8, field: 0.45, hue: 126 },
