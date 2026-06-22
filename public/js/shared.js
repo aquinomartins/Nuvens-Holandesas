@@ -17,5 +17,23 @@
     transports: ['websocket', 'polling'],
   });
 
-  window.Nuvens = { clamp, sanitizeText, createSocket };
+
+  const ASSET_VERSION = '20260622';
+  const withAssetVersion = (src) => `${src}${src.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`;
+  const characterAsset = (filename) => withAssetVersion(`/assets/characters/${filename}`);
+  const logImageLoad = (label, src) => console.info(`[nuvens:image] carregando ${label}: ${src}`);
+  const logImageReady = (label, src) => console.info(`[nuvens:image] carregada ${label}: ${src}`);
+  const logImageError = (label, src) => console.warn(`[nuvens:image] não encontrada ${label}: ${src}`);
+
+  window.Nuvens = {
+    clamp,
+    sanitizeText,
+    createSocket,
+    ASSET_VERSION,
+    withAssetVersion,
+    characterAsset,
+    logImageLoad,
+    logImageReady,
+    logImageError,
+  };
 }());
