@@ -5,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js",
-    "build": "node scripts/verify-assets.js"
+    "dev": "node --watch server.js"
   },
   "keywords": [
     "generative-art",
