@@ -9,8 +9,7 @@ const controls = ['x', 'y', 'speed', 'rhythm', 'fieldStrength', 'direction'].red
   return acc;
 }, {});
 
-const PERSONA_SHEET = { src: window.Nuvens.characterAsset('personas2.png'), cols: 15, rows: 7 };
-window.Nuvens.logImageLoad('preview participativo', PERSONA_SHEET.src);
+const PERSONA_SHEET = { src: '/assets/characters/open-peeps-sheet.png', cols: 15, rows: 7 };
 const PERSONA_COUNT = PERSONA_SHEET.cols * PERSONA_SHEET.rows;
 const CHARACTER_PRESETS = [
   { type: 'persona_01', note: 'contribuição do público / deslocamento contínuo', speed: 0.3, rhythm: 0.8, field: 0.45, hue: 126 },
@@ -92,14 +91,6 @@ function selectCharacter(type) {
   controlPanel.hidden = false;
   syncControlLimits();
 }
-function attachPreviewDiagnostics() {
-  objectCards.querySelectorAll('.persona-preview').forEach((preview, index) => {
-    const image = new Image();
-    image.onload = () => window.Nuvens.logImageReady(`preview participativo ${index + 1}`, PERSONA_SHEET.src);
-    image.onerror = () => window.Nuvens.logImageError(`preview participativo ${index + 1}`, PERSONA_SHEET.src);
-    image.src = PERSONA_SHEET.src;
-  });
-}
 function renderCards() {
   objectCards.innerHTML = Object.entries(CHARACTERS).map(([type, character]) => `
     <button class="object-card character-card" type="button" data-type="${type}">
@@ -107,7 +98,6 @@ function renderCards() {
       <strong>${character.label}</strong>
       <span>${character.note}</span>
     </button>`).join('');
-  attachPreviewDiagnostics();
   objectCards.addEventListener('click', (event) => {
     const card = event.target.closest('.object-card');
     if (card) selectCharacter(card.dataset.type);
