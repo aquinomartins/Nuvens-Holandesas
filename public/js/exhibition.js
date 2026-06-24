@@ -184,10 +184,8 @@ function resetCrowd() {
 
 function resizeCanvas() {
   dpr = window.devicePixelRatio || 1;
-  width = 100%;
-  height = 100%;
-  //width = canvas.clientWidth;
-  //height = canvas.clientHeight;
+  width = canvas.clientWidth;
+  height = canvas.clientHeight;
   canvas.width = width * dpr;
   canvas.height = height * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
