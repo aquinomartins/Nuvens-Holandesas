@@ -4,8 +4,8 @@ const socket = window.Nuvens.createSocket();
 const connectionStatus = document.querySelector('#connectionStatus');
 
 const SHEETS = {
-  initialCrowd: { src: '/assets/characters/personas.png', rows: 15, cols: 7 },
-  participatory: { src: '/assets/characters/open-peeps-sheet.png', rows: 15, cols: 7 },
+  initialCrowd: { src: '/assets/characters/open-peeps-sheet.png', rows: 15, cols: 7 },
+  participatory: { src: '/assets/characters/personas.png', rows: 15, cols: 7 },
 };
 const PARTICIPANT_LIMIT = 80;
 const EVAPORATION_TIME = 1000 * 60 * 2;
@@ -45,7 +45,7 @@ function randomFrom(seed) {
   return () => { state = Math.imul(state + 0x6d2b79f5, 1 | state); state ^= state + Math.imul(state ^ (state >>> 7), 61 | state); return ((state ^ (state >>> 14)) >>> 0) / 4294967296; };
 }
 
-class Peep {
+class MovingCharacter {
   constructor({ id = null, source, image, rect, participant = false }) {
     this.id = id;
     this.source = source;
@@ -109,7 +109,7 @@ function createInitialPeeps() {
   allPeeps.length = 0;
   const total = sheet.config.rows * sheet.config.cols;
   for (let i = 0; i < total; i += 1) {
-    allPeeps.push(new Peep({
+    allPeeps.push(new MovingCharacter({
       source: 'initialCrowd',
       image: sheet.image,
       rect: getSheetCell('initialCrowd', i),
@@ -183,13 +183,11 @@ function resetCrowd() {
 }
 
 function resizeCanvas() {
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
-  width = canvas.clientWidth || innerWidth;
-  height = canvas.clientHeight || innerHeight;
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  dpr = window.devicePixelRatio || 1;
+  width = canvas.clientWidth;
+  height = canvas.clientHeight;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   if (initialCrowdReady) resetCrowd();
 }
@@ -215,7 +213,7 @@ function ensureParticipantPeep(character) {
   const sheet = sheets.get('participatory');
   const rect = getSheetCell('participatory', character.spriteIndex);
   if (!sheet?.image || !rect) return;
-  const peep = new Peep({ id: character.id, source: 'participatory', image: sheet.image, rect, participant: true });
+  const peep = new MovingCharacter({ id: character.id, source: 'participatory', image: sheet.image, rect, participant: true });
   peep.opacity = character.opacity;
   peep.createdAt = character.createdAt;
   peep.life = character.life;
@@ -297,7 +295,9 @@ function dissolveFactor(character, now) {
   return Math.min(ttlFade, removalFade);
 }
 function drawBackground() {
-  ctx.clearRect(0, 0, width, height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 function render(nowMs) {
   const dt = Math.min(0.08, (nowMs - lastTime) / 1000);
