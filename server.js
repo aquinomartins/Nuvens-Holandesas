@@ -31,9 +31,9 @@ const ZONES = {
   lower: { xMin: 0.08, xMax: 0.92, yMin: 0.58, yMax: 0.92 },
 };
 const CHARACTER_TYPES = {
-  persona_01: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.35, speedMax: 0.95, rhythmMin: 0.35, rhythmMax: 0.95, fieldMin: 0.18, fieldMax: 0.85, radiusMin: 0.07, radiusMax: 0.18, spriteIndex: 12, hue: 126 },
-  persona_02: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.35, speedMax: 0.95, rhythmMin: 0.35, rhythmMax: 0.95, fieldMin: 0.22, fieldMax: 1, radiusMin: 0.1, radiusMax: 0.24, spriteIndex: 44, hue: 194 },
-  persona_03: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.35, speedMax: 0.95, rhythmMin: 0.35, rhythmMax: 0.95, fieldMin: 0.2, fieldMax: 1, radiusMin: 0.09, radiusMax: 0.24, spriteIndex: 81, hue: 45 },
+  persona_01: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.08, speedMax: 0.55, rhythmMin: 0.35, rhythmMax: 1.4, fieldMin: 0.18, fieldMax: 0.85, radiusMin: 0.07, radiusMax: 0.18, spriteIndex: 12, hue: 126 },
+  persona_02: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.04, speedMax: 0.42, rhythmMin: 0.25, rhythmMax: 1.15, fieldMin: 0.22, fieldMax: 1, radiusMin: 0.1, radiusMax: 0.24, spriteIndex: 44, hue: 194 },
+  persona_03: { zone: 'lower', scaleMin: 0.42, scaleMax: 0.9, speedMin: 0.05, speedMax: 0.5, rhythmMin: 0.25, rhythmMax: 1.25, fieldMin: 0.2, fieldMax: 1, radiusMin: 0.09, radiusMax: 0.24, spriteIndex: 81, hue: 45 },
 };
 const OBJECT_TYPES = {
   green_bundle: { zone: 'lower', scaleMin: 0.42, scaleMax: 1.28, rotationMin: -18, rotationMax: 18, opacityMin: 0.45, opacityMax: 0.95 },

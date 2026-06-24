@@ -15,20 +15,9 @@ const allPeeps = [];
 const availableInitialPeeps = [];
 const crowd = [];
 const participantCharacters = new Map();
-const MOTION_CONFIG = {
-  xDuration: 22,
-  yDuration: 0.55,
-  timeScaleMin: 0.55,
-  timeScaleMax: 0.95,
-  verticalAmplitude: 6,
-  userPersonaSpeedMultiplier: 0.9,
-};
-
-const stage = {
-  width: window.innerWidth,
-  height: window.innerHeight,
-  dpr: Math.min(window.devicePixelRatio || 1, 2),
-};
+let dpr = 1;
+let width = innerWidth;
+let height = innerHeight;
 let lastTime = performance.now();
 let initialCrowdReady = false;
 
@@ -62,8 +51,6 @@ class MovingCharacter {
     this.source = source;
     this.image = image;
     this.rect = rect;
-    this.sourceWidth = rect[2];
-    this.sourceHeight = rect[3];
     this.width = rect[2];
     this.height = rect[3];
     this.participant = participant;
@@ -82,9 +69,9 @@ class MovingCharacter {
   render(context, nowMs) {
     const fade = dissolveFactor(this, Date.now());
     if (fade <= 0) return;
-    const bobProgress = (this.progress * MOTION_CONFIG.xDuration / MOTION_CONFIG.yDuration) % 1;
+    const bobProgress = (this.progress * 10 / 0.25) % 1;
     const bob = bobProgress < 0.5 ? bobProgress * 2 : (1 - bobProgress) * 2;
-    const y = this.anchorY - (MOTION_CONFIG.verticalAmplitude * bob);
+    const y = this.anchorY - (10 * bob);
 
     context.save();
     context.globalAlpha = this.opacity * fade;
@@ -144,36 +131,20 @@ function loadSheets() {
   });
 }
 
-function getProjectionScale(baseScale = 1) {
-  const referenceHeight = 1080;
-  const scale = stage.height / referenceHeight;
-  return clamp(scale * baseScale, 0.55, 1.35, 1);
-}
-
-function updatePeepDimensions(peep) {
-  const depth = clamp(peep.anchorRatio || 0.78, 0.46, 0.98, 0.78);
-  const baseScale = 0.7 + depth * 0.42;
-  const projectionScale = getProjectionScale(baseScale);
-  peep.width = peep.sourceWidth * projectionScale;
-  peep.height = peep.sourceHeight * projectionScale;
-}
-
 function resetPeep(peep, { startProgress = 0 } = {}) {
   const direction = Math.random() > 0.5 ? 1 : -1;
-  peep.anchorRatio = randomRange(0.58, 0.96);
-  updatePeepDimensions(peep);
-  const horizonLift = stage.height * 0.08 * easePower2In(Math.random());
-  const startY = (stage.height * peep.anchorRatio) - peep.height - horizonLift;
+  const offsetY = 100 - 250 * easePower2In(Math.random());
+  const startY = height - peep.height + offsetY;
   let startX;
   let endX;
 
   if (direction === 1) {
     startX = -peep.width;
-    endX = stage.width + peep.width;
+    endX = width;
     peep.scaleX = 1;
   } else {
-    startX = stage.width + peep.width;
-    endX = -peep.width;
+    startX = width + peep.width;
+    endX = 0;
     peep.scaleX = -1;
   }
 
@@ -183,8 +154,7 @@ function resetPeep(peep, { startProgress = 0 } = {}) {
   peep.y = startY;
   peep.anchorY = startY;
   peep.progress = startProgress;
-  peep.timeScale = randomRange(MOTION_CONFIG.timeScaleMin, MOTION_CONFIG.timeScaleMax);
-  if (peep.participant) peep.timeScale *= MOTION_CONFIG.userPersonaSpeedMultiplier;
+  peep.timeScale = randomRange(0.5, 1.5);
   updatePeepPosition(peep, 0);
   return peep;
 }
@@ -212,21 +182,13 @@ function resetCrowd() {
   });
 }
 
-function resizeStage() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-  stage.width = window.innerWidth;
-  stage.height = window.innerHeight;
-  stage.dpr = dpr;
-
-  canvas.width = Math.floor(stage.width * dpr);
-  canvas.height = Math.floor(stage.height * dpr);
-
-  canvas.style.width = `${stage.width}px`;
-  canvas.style.height = `${stage.height}px`;
-
+function resizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  width = canvas.clientWidth;
+  height = canvas.clientHeight;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
   if (initialCrowdReady) resetCrowd();
 }
 
@@ -302,7 +264,7 @@ socket.on('scene:reset', () => {
 });
 
 function updatePeepPosition(peep, dt) {
-  peep.progress += (dt * peep.timeScale) / MOTION_CONFIG.xDuration;
+  peep.progress += (dt * peep.timeScale) / 10;
   if (peep.progress >= 1) {
     if (peep.participant) resetPeep(peep);
     else {
@@ -333,8 +295,9 @@ function dissolveFactor(character, now) {
   return Math.min(ttlFade, removalFade);
 }
 function drawBackground() {
-  ctx.setTransform(stage.dpr, 0, 0, stage.dpr, 0, 0);
-  ctx.clearRect(0, 0, stage.width, stage.height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 function render(nowMs) {
   const dt = Math.min(0.08, (nowMs - lastTime) / 1000);
@@ -346,6 +309,6 @@ function render(nowMs) {
 }
 
 loadSheets();
-resizeStage();
-window.addEventListener('resize', resizeStage);
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 requestAnimationFrame(render);

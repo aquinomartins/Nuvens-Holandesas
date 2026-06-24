@@ -47,20 +47,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   width: 100%;
   height: 100%;
   min-height: 100%;
-  margin: 0;
-  padding: 0;
   overflow: hidden;
-  background: #f3efe4;
+  background: #d8e2e5;
 }
-#scene,
-#canvas,
-#exhibitionCanvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-}
+#scene { display: block; width: 100vw; height: 100vh; }
 .exhibition-caption { position: fixed; left: 1.4rem; bottom: 1.2rem; color: rgba(31,35,30,0.34); font-family: Georgia, serif; font-size: 0.82rem; letter-spacing: 0.08em; pointer-events: none; text-shadow: 0 1px 18px rgba(244,239,222,0.42); }
 @media (max-width: 560px) {
   .home-actions, .button { width: 100%; text-align: center; justify-content: center; }
