@@ -10,11 +10,16 @@ const controls = ['x', 'y', 'speed', 'rhythm', 'fieldStrength', 'direction'].red
 }, {});
 
 const PERSONA_SHEET = { src: '/assets/characters/personas.png', cols: 15, rows: 7 };
+const USER_CONTROL_LIMITS = {
+  minSpeedMultiplier: 0.35,
+  maxSpeedMultiplier: 0.95,
+  defaultSpeedMultiplier: 0.65,
+};
 const PERSONA_COUNT = PERSONA_SHEET.cols * PERSONA_SHEET.rows;
 const CHARACTER_PRESETS = [
-  { type: 'persona_01', note: 'contribuição do público / deslocamento contínuo', speed: 0.3, rhythm: 0.8, field: 0.45, hue: 126 },
-  { type: 'persona_02', note: 'contribuição do público / presença lenta', speed: 0.16, rhythm: 0.55, field: 0.68, hue: 194 },
-  { type: 'persona_03', note: 'contribuição do público / travessia densa', speed: 0.24, rhythm: 0.65, field: 0.74, hue: 45 },
+  { type: 'persona_01', note: 'contribuição do público / deslocamento contínuo', speed: 0.65, rhythm: 0.8, field: 0.45, hue: 126 },
+  { type: 'persona_02', note: 'contribuição do público / presença lenta', speed: 0.55, rhythm: 0.55, field: 0.68, hue: 194 },
+  { type: 'persona_03', note: 'contribuição do público / travessia densa', speed: 0.6, rhythm: 0.65, field: 0.74, hue: 45 },
 ];
 const CHARACTERS = createRandomCharacters();
 const PARTICIPANT_ZONE = { xMin: 0.08, xMax: 0.92, yMin: 0.52, yMax: 0.94 };
@@ -42,6 +47,10 @@ function createRandomCharacters() {
   }, {});
 }
 
+function clamp(value, min, max, fallback = min) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
 function setStatus(message) { statusEl.textContent = message; }
 function selectedRules() { return CHARACTERS[selectedType] || CHARACTERS.persona_01; }
 function spritePreviewStyle(spriteIndex) {
@@ -53,8 +62,12 @@ function syncControlLimits() {
   const rules = selectedRules();
   controls.x.min = PARTICIPANT_ZONE.xMin; controls.x.max = PARTICIPANT_ZONE.xMax; controls.x.value = (PARTICIPANT_ZONE.xMin + PARTICIPANT_ZONE.xMax) / 2;
   controls.y.min = PARTICIPANT_ZONE.yMin; controls.y.max = PARTICIPANT_ZONE.yMax; controls.y.value = 0.78;
-  controls.speed.value = rules.speed;
-  controls.rhythm.value = rules.rhythm;
+  controls.speed.min = USER_CONTROL_LIMITS.minSpeedMultiplier;
+  controls.speed.max = USER_CONTROL_LIMITS.maxSpeedMultiplier;
+  controls.speed.value = clamp(rules.speed, USER_CONTROL_LIMITS.minSpeedMultiplier, USER_CONTROL_LIMITS.maxSpeedMultiplier, USER_CONTROL_LIMITS.defaultSpeedMultiplier);
+  controls.rhythm.min = USER_CONTROL_LIMITS.minSpeedMultiplier;
+  controls.rhythm.max = USER_CONTROL_LIMITS.maxSpeedMultiplier;
+  controls.rhythm.value = clamp(rules.rhythm, USER_CONTROL_LIMITS.minSpeedMultiplier, USER_CONTROL_LIMITS.maxSpeedMultiplier, USER_CONTROL_LIMITS.defaultSpeedMultiplier);
   controls.fieldStrength.value = rules.field;
   controls.direction.value = 'right';
 }
@@ -72,8 +85,8 @@ function payloadFromControls() {
     targetX: x,
     targetY: y,
     direction: controls.direction.value,
-    speed: Number(controls.speed.value),
-    rhythm: Number(controls.rhythm.value),
+    speed: clamp(controls.speed.value, USER_CONTROL_LIMITS.minSpeedMultiplier, USER_CONTROL_LIMITS.maxSpeedMultiplier, USER_CONTROL_LIMITS.defaultSpeedMultiplier),
+    rhythm: clamp(controls.rhythm.value, USER_CONTROL_LIMITS.minSpeedMultiplier, USER_CONTROL_LIMITS.maxSpeedMultiplier, USER_CONTROL_LIMITS.defaultSpeedMultiplier),
     fieldStrength: Number(controls.fieldStrength.value),
     fieldRadius: 0.08 + Number(controls.fieldStrength.value) * 0.16,
     allowedZone: 'lower',
