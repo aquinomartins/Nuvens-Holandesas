@@ -17,7 +17,7 @@ Aplicação web interativa para exposição presencial. Visitantes acessam `/par
 
 A rota `/exhibition` opera como uma pintura atmosférica viva, não como simulação meteorológica. A nova versão simplifica a antiga nuvem volumétrica e adota uma linguagem gráfica, expressiva e performática: céu dominante, horizonte baixo, campo/planalto do Cerrado, chapadas discretas, caminhos ocres, pinceladas aparentes, bordas marcadas, linhas curvas e massas de cor.
 
-A inspiração geral vem da energia pictórica de campos, céus, nuvens e paisagens pós-impressionistas, especialmente pelo uso de pinceladas curtas, direcionais e rítmicas. A obra não copia uma pintura específica: continua sendo **“Nuvens Holandesas sobre o Planalto Central”**, com céu amplo, profundidade atmosférica, sombra atmosférica e nuvem como arquitetura da paisagem.
+A inspiração geral vem da energia pictórica de campos, céus, nuvens e paisagens pós-impressionistas, especialmente pelo uso de pinceladas curtas, direcionais e rítmicas. A obra não copia uma pintura específica: continua sendo **“Nuvens Holandesas sobre o Planalto Central”**, com céu amplo, profundidade atmosférica, sombra no solo e nuvem como arquitetura da paisagem.
 
 ## Arquitetura visual e performance
 
